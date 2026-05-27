@@ -1,0 +1,6 @@
+pdfplumber
+pikepdf
+pymupdf
+openpyxl
+pyyaml
+python-dotenv

@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CC Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0f172a;
+      --card:    #1e293b;
+      --border:  #334155;
+      --text:    #f1f5f9;
+      --muted:   #94a3b8;
+      --accent:  #38bdf8;
+      --green:   #4ade80;
+      --red:     #f87171;
+      --hover:   #334155;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px; line-height: 1.5; min-height: 100vh;
+    }
+    .container { max-width: 1280px; margin: 0 auto; padding: 28px 20px 64px; }
+    .section-title {
+      font-size: 0.7rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px;
+    }
+    .card-shadow { box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+
+    /* ── Header ── */
+    .header { margin-bottom: 28px; }
+    .header h1 {
+      font-family: 'Sora', sans-serif;
+      font-size: clamp(1.7rem, 4vw, 2.3rem);
+      font-weight: 700; color: var(--text); letter-spacing: -0.02em;
+    }
+    .header .subtitle { font-size: 0.78rem; color: var(--muted); margin-top: 5px; }
+
+    /* ── Cycle selector ── */
+    .cycle-selector { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+    .cycle-selector label { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+    .cycle-select {
+      background: var(--card); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-family: inherit;
+      outline: none; cursor: pointer; transition: border-color 0.15s;
+    }
+    .cycle-select:focus { border-color: var(--accent); }
+
+    /* ── Summary cards ── */
+    .cards-row {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 14px; margin-bottom: 14px;
+    }
+    .card { border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; }
+    .card-total { background: var(--bg); border: 1px solid var(--border); }
+    .card-lbl {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; opacity: 0.75; margin-bottom: 8px;
+    }
+    .card-line1 { font-family: 'Sora', sans-serif; font-size: 1.05rem; font-weight: 700; line-height: 1.1; }
+    .card-line2 {
+      font-family: 'Sora', sans-serif; font-size: 0.82rem; font-weight: 600;
+      opacity: 0.72; margin-bottom: 10px; min-height: 1.1em;
+    }
+    .card-value {
+      font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 5px;
+    }
+    .card-sub  { font-size: 0.73rem; opacity: 0.68; }
+    .card-meta { display: block; font-size: 0.68rem; opacity: 0.82; margin-top: 2px; }
+
+    /* ── Category + FC wrapper ── */
+    .cat-fc-wrapper {
+      display: grid; grid-template-columns: 1fr 252px;
+      gap: 14px; margin-bottom: 14px; align-items: stretch;
+    }
+    .cat-section { background: var(--card); border-radius: 12px; padding: 20px 22px; }
+    .cat-layout { display: flex; align-items: center; gap: 32px; }
+    .donut-wrap { width: 200px; height: 200px; flex-shrink: 0; }
+    .cat-list { flex: 1; min-width: 0; }
+    .cat-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 0; border-bottom: 1px solid var(--border);
+    }
+    .cat-item:last-child { border-bottom: none; }
+    .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .cat-name {
+      flex: 1; font-size: 0.82rem; font-weight: 500;
+      min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .cat-right { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+    .cat-amount { font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .cat-txcount { font-size: 0.7rem; color: var(--muted); }
+
+    /* ── Finance Charge stack ── */
+    .fc-stack { display: grid; grid-template-rows: 1fr 1fr; gap: 14px; }
+    .fc-arrow {
+      font-family: 'Sora', sans-serif; font-size: 1.05rem; font-weight: 700;
+      font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+      line-height: 1.4; margin: 8px 0 6px; word-break: break-word;
+    }
+
+    /* ── Panel ── */
+    .panel { background: var(--card); border-radius: 12px; padding: 20px 22px; }
+    .top3-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .month-block {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .month-block:last-of-type { border-bottom: none; }
+    .month-lbl { font-size: 0.78rem; color: var(--muted); margin-bottom: 3px; }
+    .month-val { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .month-pct {
+      display: inline-block; margin-top: 12px; padding: 4px 14px;
+      border-radius: 6px; font-size: 0.95rem; font-weight: 700;
+    }
+    .pct-up   { color: var(--green); background: rgba(74,222,128,0.1); }
+    .pct-down { color: var(--red);   background: rgba(248,113,113,0.1); }
+    .no-data-msg { font-size: 0.82rem; color: var(--muted); padding: 8px 0; }
+
+    /* ── Top 3 ── */
+    .top3-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .top3-item:last-child { border-bottom: none; }
+    .top3-rank   { font-size: 0.7rem; color: var(--muted); min-width: 18px; }
+    .top3-name   { flex: 1; font-size: 0.82rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top3-amount { font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    /* ── Bar chart ── */
+    .chart-wrap { background: var(--card); border-radius: 12px; padding: 20px 22px; margin-bottom: 14px; }
+    .chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #spendChart { height: 280px; display: block; }
+
+    /* ── Table ── */
+    .table-section { background: var(--card); border-radius: 12px; padding: 20px 22px; }
+    .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filters select, .filters input[type="text"] {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 7px 12px; border-radius: 8px; font-size: 0.8rem; font-family: inherit;
+      outline: none; transition: border-color 0.15s; cursor: pointer;
+    }
+    .filters select:focus, .filters input:focus { border-color: var(--accent); }
+    .filters input[type="text"] { min-width: 180px; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 680px; }
+    thead th {
+      text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border);
+      color: var(--muted); font-weight: 500; white-space: nowrap;
+    }
+    tbody td { padding: 9px 12px; border-bottom: 1px solid rgba(51,65,85,0.45); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--hover); }
+    .td-amount { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .amt-pos { color: var(--text); }
+    .amt-neg { color: var(--green); }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 0.68rem; font-weight: 600; color: #fff; white-space: nowrap;
+    }
+
+    /* ── Pagination ── */
+    .pagination {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 16px; gap: 12px; flex-wrap: wrap;
+    }
+    .page-info { font-size: 0.78rem; color: var(--muted); }
+    .page-btns { display: flex; gap: 8px; }
+    .btn {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 18px; border-radius: 7px; cursor: pointer;
+      font-size: 0.78rem; font-family: inherit; transition: background 0.15s;
+    }
+    .btn:hover:not(:disabled) { background: var(--hover); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      .container        { padding: 18px 14px 52px; }
+      .cards-row        { grid-template-columns: repeat(2, 1fr); }
+      .card-value       { font-size: 1.35rem; }
+      .cat-layout       { flex-direction: column; align-items: center; }
+      .donut-wrap       { width: 180px; height: 180px; }
+      .cat-list         { width: 100%; }
+      .cat-fc-wrapper   { grid-template-columns: 1fr; }
+      .cycle-select     { width: 100%; }
+      .top3-inner       { min-width: 420px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ① Header + Cycle Selector -->
+  <header class="header">
+    <h1>Hello, Lincoln!</h1>
+    <p class="subtitle">Last updated: <span id="lastUpdated"></span></p>
+    <div class="cycle-selector">
+      <label for="cycleDropdown">Cycle:</label>
+      <select class="cycle-select" id="cycleDropdown" onchange="switchCycle(this.value)"></select>
+    </div>
+  </header>
+
+  <!-- ② Summary Cards -->
+  <div class="cards-row" id="summaryCards"></div>
+
+  <!-- ③ Spending by Category + Finance Charge -->
+  <div class="cat-fc-wrapper">
+    <div class="cat-section card-shadow">
+      <div class="section-title">Spending by Category</div>
+      <div class="cat-layout">
+        <div class="donut-wrap"><canvas id="categoryChart"></canvas></div>
+        <div class="cat-list" id="categoryList"></div>
+      </div>
+    </div>
+    <div class="fc-stack">
+      <div class="panel card-shadow" id="fcChangeCard"></div>
+      <div class="panel card-shadow" id="cycleCompCard"></div>
+    </div>
+  </div>
+
+  <!-- ④ Top 3 Merchants -->
+  <div id="top3Panel" class="panel card-shadow" style="margin-bottom:14px">
+    <div class="section-title">Top 3 Merchants</div>
+    <div class="top3-scroll">
+      <div class="top3-inner" id="top3List"></div>
+    </div>
+  </div>
+
+  <!-- ⑤ Stacked Bar Chart -->
+  <div class="chart-wrap card-shadow">
+    <div class="section-title">Spend by Billing Cycle</div>
+    <div class="chart-scroll">
+      <canvas id="spendChart"></canvas>
+    </div>
+    <div id="cycleAvg" style="margin-top:12px;font-size:0.78rem;color:var(--muted);text-align:center;"></div>
+  </div>
+
+  <!-- ⑥ Spending Summary -->
+  <div class="chart-wrap card-shadow" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div class="section-title" style="margin-bottom:0">Spending Summary</div>
+      <select class="cycle-select" id="summaryYearDropdown" onchange="renderSpendingSummary(this.value)" style="padding:4px 12px;font-size:0.75rem;border-radius:20px"></select>
+    </div>
+    <div class="table-scroll">
+      <table style="min-width:360px">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th style="text-align:right">Total</th>
+            <th style="text-align:right">% vs Last Year</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ⑦ All Transactions -->
+  <div class="table-section card-shadow">
+    <div class="section-title" style="margin-bottom:16px">All Transactions</div>
+    <div class="filters">
+      <select id="filterBank" onchange="applyFilters()">
+        <option value="">All Banks</option>
+      </select>
+      <select id="filterStmt" onchange="applyFilters()">
+        <option value="">All Statements</option>
+      </select>
+      <select id="filterCategory" onchange="applyFilters()">
+        <option value="">All Categories</option>
+      </select>
+      <input id="filterSearch" type="text" placeholder="Search merchant&hellip;" oninput="applyFilters()">
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Statement Date</th><th>Date</th><th>Transaction</th>
+            <th style="text-align:right">Amount</th><th>Bank</th>
+          </tr>
+        </thead>
+        <tbody id="txBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <span id="pageInfo" class="page-info"></span>
+      <div class="page-btns">
+        <button class="btn" id="btnPrev" onclick="prevPage()">&larr; Prev</button>
+        <button class="btn" id="btnNext" onclick="nextPage()">Next &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+const D = {"all_cycles":["2026-01","2026-02","2026-03","2026-04"],"latest_cycle":"2026-04","cycles_data":{"2026-01":{"total":26938.0,"bank_totals":{"BDO":11460.0,"BPI_Lincoln":15478.0,"BPI_Xherine":0.0},"bank_counts":{"BDO":11,"BPI_Lincoln":12,"BPI_Xherine":0},"bank_stmt_dates":{"BDO":"Feb 1, 2026","BPI_Lincoln":"Jan 25, 2026","BPI_Xherine":""},"finance_charge":1050.0,"categories":{"Finance Charge":{"icon":"💳","color":"#ef4444","total":1050.0,"count":1},"Grab":{"icon":"🚗","color":"#06b6d4","total":1900.0,"count":6},"Online Shopping":{"icon":"🛍️","color":"#f59e0b","total":4340.0,"count":2},"Subscriptions":{"icon":"📱","color":"#8b5cf6","total":518.0,"count":2},"Pharmacy":{"icon":"💊","color":"#ec4899","total":680.0,"count":1},"Toll fee":{"icon":"🛣️","color":"#f97316","total":440.0,"count":2},"Gas":{"icon":"⛽","color":"#eab308","total":6000.0,"count":2},"Groceries":{"icon":"🛒","color":"#10b981","total":4350.0,"count":1},"Other":{"icon":"📦","color":"#475569","total":7660.0,"count":6}},"top3":[{"name":"WALTER MART ALABANG","total":3120.0,"bank":"BPI_Lincoln"},{"name":"SM SUPERMARKET NORTH","total":2100.0,"bank":"BDO"},{"name":"NATIONAL BOOKSTORE ALABANG","total":890.0,"bank":"BPI_Lincoln"}],"cycle_comp":null},"2026-02":{"total":27968.0,"bank_totals":{"BDO":10630.0,"BPI_Lincoln":17338.0,"BPI_Xherine":0.0},"bank_counts":{"BDO":11,"BPI_Lincoln":13,"BPI_Xherine":0},"bank_stmt_dates":{"BDO":"Mar 1, 2026","BPI_Lincoln":"Feb 25, 2026","BPI_Xherine":""},"finance_charge":2040.0,"categories":{"Finance Charge":{"icon":"💳","color":"#ef4444","total":2040.0,"count":2},"Grab":{"icon":"🚗","color":"#06b6d4","total":2400.0,"count":6},"Online Shopping":{"icon":"🛍️","color":"#f59e0b","total":3990.0,"count":2},"Subscriptions":{"icon":"📱","color":"#8b5cf6","total":518.0,"count":2},"Pharmacy":{"icon":"💊","color":"#ec4899","total":750.0,"count":1},"Toll fee":{"icon":"🛣️","color":"#f97316","total":440.0,"count":2},"Gas":{"icon":"⛽","color":"#eab308","total":6350.0,"count":2},"Groceries":{"icon":"🛒","color":"#10b981","total":4230.0,"count":1},"Other":{"icon":"📦","color":"#475569","total":7250.0,"count":6}},"top3":[{"name":"WALTER MART ALABANG","total":3680.0,"bank":"BPI_Lincoln"},{"name":"TIMEZONE GATEWAY","total":1450.0,"bank":"BPI_Lincoln"},{"name":"MERCURY DRUG COMMONWEALTH","total":680.0,"bank":"BDO"}],"cycle_comp":{"current":{"ck":"2026-02","label":"Feb 15 – Mar 5 '26","total":27968.0},"previous":{"ck":"2026-01","label":"Jan 15 – Feb 5 '26","total":26938.0},"pct_change":3.8,"prev_finance_charge":1050.0,"finance_charge_pct":94.3}},"2026-03":{"total":37948.0,"bank_totals":{"BDO":10970.0,"BPI_Lincoln":26978.0,"BPI_Xherine":0.0},"bank_counts":{"BDO":11,"BPI_Lincoln":14,"BPI_Xherine":0},"bank_stmt_dates":{"BDO":"Apr 1, 2026","BPI_Lincoln":"Mar 25, 2026","BPI_Xherine":""},"finance_charge":2080.0,"categories":{"Finance Charge":{"icon":"💳","color":"#ef4444","total":2080.0,"count":2},"Grab":{"icon":"🚗","color":"#06b6d4","total":2250.0,"count":6},"Online Shopping":{"icon":"🛍️","color":"#f59e0b","total":4850.0,"count":2},"Subscriptions":{"icon":"📱","color":"#8b5cf6","total":518.0,"count":2},"Pharmacy":{"icon":"💊","color":"#ec4899","total":1540.0,"count":2},"Toll fee":{"icon":"🛣️","color":"#f97316","total":440.0,"count":2},"Gas":{"icon":"⛽","color":"#eab308","total":6400.0,"count":2},"Groceries":{"icon":"🛒","color":"#10b981","total":3890.0,"count":1},"Other":{"icon":"📦","color":"#475569","total":15980.0,"count":6}},"top3":[{"name":"MAXIMS HOTEL MANILA","total":8500.0,"bank":"BPI_Lincoln"},{"name":"WALTER MART ALABANG","total":4560.0,"bank":"BPI_Lincoln"},{"name":"YELLOW CAB PIZZA BGC","total":890.0,"bank":"BDO"}],"cycle_comp":{"current":{"ck":"2026-03","label":"Mar 15 – Apr 5 '26","total":37948.0},"previous":{"ck":"2026-02","label":"Feb 15 – Mar 5 '26","total":27968.0},"pct_change":35.7,"prev_finance_charge":2040.0,"finance_charge_pct":2.0}},"2026-04":{"total":33725.0,"bank_totals":{"BDO":20657.0,"BPI_Lincoln":13068.0,"BPI_Xherine":0.0},"bank_counts":{"BDO":11,"BPI_Lincoln":12,"BPI_Xherine":0},"bank_stmt_dates":{"BDO":"May 1, 2026","BPI_Lincoln":"Apr 26, 2026","BPI_Xherine":""},"finance_charge":2030.0,"categories":{"Finance Charge":{"icon":"💳","color":"#ef4444","total":2030.0,"count":2},"Grab":{"icon":"🚗","color":"#06b6d4","total":2240.0,"count":6},"Online Shopping":{"icon":"🛍️","color":"#f59e0b","total":4130.0,"count":2},"Subscriptions":{"icon":"📱","color":"#8b5cf6","total":518.0,"count":2},"Pharmacy":{"icon":"💊","color":"#ec4899","total":680.0,"count":1},"Toll fee":{"icon":"🛣️","color":"#f97316","total":440.0,"count":2},"Gas":{"icon":"⛽","color":"#eab308","total":6150.0,"count":2},"Groceries":{"icon":"🛒","color":"#10b981","total":4100.0,"count":1},"Other":{"icon":"📦","color":"#475569","total":13437.0,"count":5}},"top3":[{"name":"LETS GO KNICKSSSSS","total":6767.0,"bank":"BDO"},{"name":"NASAN ANG BATO?","total":4500.0,"bank":"BDO"},{"name":"NATIONAL BOOKSTORE ALABANG","total":890.0,"bank":"BPI_Lincoln"}],"cycle_comp":{"current":{"ck":"2026-04","label":"Apr 15 – May 5 '26","total":33725.0},"previous":{"ck":"2026-03","label":"Mar 15 – Apr 5 '26","total":37948.0},"pct_change":-11.1,"prev_finance_charge":2080.0,"finance_charge_pct":-2.4}}},"cycle_spend":{"BDO":{"2026-01":11460.0,"2026-02":10630.0,"2026-03":10970.0,"2026-04":20657.0},"BPI_Lincoln":{"2026-01":15478.0,"2026-02":17338.0,"2026-03":26978.0,"2026-04":13068.0},"BPI_Xherine":{}},"all_years":["2026"],"latest_year":"2026","years_data":{"2026":{"total":126579.0,"bank_totals":{"BDO":53717.0,"BPI_Lincoln":72862.0,"BPI_Xherine":0.0},"bank_counts":{"BDO":44,"BPI_Lincoln":51,"BPI_Xherine":0},"bank_stmt_dates":{"BDO":"May 1, 2026","BPI_Lincoln":"Apr 26, 2026","BPI_Xherine":""},"finance_charge":7200.0,"categories":{"Finance Charge":{"icon":"💳","color":"#ef4444","total":7200.0,"count":7},"Grab":{"icon":"🚗","color":"#06b6d4","total":8790.0,"count":24},"Online Shopping":{"icon":"🛍️","color":"#f59e0b","total":17310.0,"count":8},"Subscriptions":{"icon":"📱","color":"#8b5cf6","total":2072.0,"count":8},"Pharmacy":{"icon":"💊","color":"#ec4899","total":3650.0,"count":5},"Toll fee":{"icon":"🛣️","color":"#f97316","total":1760.0,"count":8},"Gas":{"icon":"⛽","color":"#eab308","total":24900.0,"count":8},"Groceries":{"icon":"🛒","color":"#10b981","total":16570.0,"count":4},"Other":{"icon":"📦","color":"#475569","total":44327.0,"count":23}},"year_comp":null}},"banks":["BDO","BPI_Lincoln","BPI_Xherine"],"bank_display":{"BDO":["BDO",""],"BPI_Lincoln":["BPI","Lincoln"],"BPI_Xherine":["BPI","Xherine"]},"bank_colors":{"BDO":"#1a56db","BPI_Lincoln":"#e02424","BPI_Xherine":"#9ca3af"},"all_tx":[{"statement_date":"2026-05-01","date":"2026-05-01","transaction":"FINANCE CHARGE","amount":1050.0,"bank":"BDO","category":"Finance Charge"},{"statement_date":"2026-05-01","date":"2026-04-29","transaction":"NASAN ANG BATO?","amount":4500.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-05-01","date":"2026-04-28","transaction":"LETS GO KNICKSSSSS","amount":6767.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-05-01","date":"2026-04-26","transaction":"PETRON QUEZON AVE","amount":2900.0,"bank":"BDO","category":"Gas"},{"statement_date":"2026-05-01","date":"2026-04-25","transaction":"GRAB FOOD","amount":390.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-05-01","date":"2026-04-23","transaction":"SMC SKYWAY TOLL","amount":220.0,"bank":"BDO","category":"Toll fee"},{"statement_date":"2026-05-01","date":"2026-04-22","transaction":"MERCURY DRUG COMMONWEALTH","amount":720.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-05-01","date":"2026-04-20","transaction":"GRAB FOOD","amount":450.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-05-01","date":"2026-04-18","transaction":"SMC SKYWAY TOLL","amount":220.0,"bank":"BDO","category":"Toll fee"},{"statement_date":"2026-05-01","date":"2026-04-17","transaction":"GRAB RIDE","amount":190.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-05-01","date":"2026-04-16","transaction":"PETRON COMMONWEALTH","amount":3250.0,"bank":"BDO","category":"Gas"},{"statement_date":"2026-04-26","date":"2026-04-26","transaction":"FINANCE CHARGE","amount":980.0,"bank":"BPI_Lincoln","category":"Finance Charge"},{"statement_date":"2026-04-26","date":"2026-04-25","transaction":"WATSONS ALABANG","amount":680.0,"bank":"BPI_Lincoln","category":"Pharmacy"},{"statement_date":"2026-04-26","date":"2026-04-24","transaction":"NATIONAL BOOKSTORE ALABANG","amount":890.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-04-26","date":"2026-04-23","transaction":"TIKTOK SHOP","amount":1780.0,"bank":"BPI_Lincoln","category":"Online Shopping"},{"statement_date":"2026-04-26","date":"2026-04-22","transaction":"GRAB FOOD","amount":490.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-04-26","date":"2026-04-21","transaction":"SPOTIFY SUBSCRIPTION","amount":169.0,"bank":"BPI_Lincoln","category":"Subscriptions"},{"statement_date":"2026-04-26","date":"2026-04-20","transaction":"MERCURY DRUG ALABANG","amount":560.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-04-26","date":"2026-04-19","transaction":"GRAB RIDE","amount":310.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-04-26","date":"2026-04-18","transaction":"APPLE ITUNES STORE","amount":349.0,"bank":"BPI_Lincoln","category":"Subscriptions"},{"statement_date":"2026-04-26","date":"2026-04-17","transaction":"SHOPWISE ALABANG","amount":4100.0,"bank":"BPI_Lincoln","category":"Groceries"},{"statement_date":"2026-04-26","date":"2026-04-16","transaction":"LAZADA PHILIPPINES","amount":2350.0,"bank":"BPI_Lincoln","category":"Online Shopping"},{"statement_date":"2026-04-26","date":"2026-04-15","transaction":"GRAB FOOD","amount":410.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-04-01","date":"2026-04-01","transaction":"FINANCE CHARGE","amount":980.0,"bank":"BDO","category":"Finance Charge"},{"statement_date":"2026-04-01","date":"2026-03-30","transaction":"WATSONS TRINOMA","amount":620.0,"bank":"BDO","category":"Pharmacy"},{"statement_date":"2026-04-01","date":"2026-03-28","transaction":"YELLOW CAB PIZZA BGC","amount":890.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-04-01","date":"2026-03-27","transaction":"PETRON BALINTAWAK","amount":3300.0,"bank":"BDO","category":"Gas"},{"statement_date":"2026-04-01","date":"2026-03-25","transaction":"GRAB FOOD","amount":380.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-04-01","date":"2026-03-24","transaction":"SMC SKYWAY TOLL","amount":220.0,"bank":"BDO","category":"Toll fee"},{"statement_date":"2026-04-01","date":"2026-03-22","transaction":"MERCURY DRUG COMMONWEALTH","amount":550.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-04-01","date":"2026-03-20","transaction":"GRAB FOOD","amount":490.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-04-01","date":"2026-03-18","transaction":"SMC SKYWAY TOLL","amount":220.0,"bank":"BDO","category":"Toll fee"},{"statement_date":"2026-04-01","date":"2026-03-17","transaction":"GRAB RIDE","amount":220.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-04-01","date":"2026-03-16","transaction":"PETRON COMMONWEALTH","amount":3100.0,"bank":"BDO","category":"Gas"},{"statement_date":"2026-03-25","date":"2026-03-25","transaction":"WALTER MART ALABANG","amount":4560.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-03-25","date":"2026-03-25","transaction":"MAXIMS HOTEL MANILA","amount":8500.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-03-25","date":"2026-03-25","transaction":"FINANCE CHARGE","amount":1100.0,"bank":"BPI_Lincoln","category":"Finance Charge"},{"statement_date":"2026-03-25","date":"2026-03-24","transaction":"BOOKSALE INC ALABANG","amount":650.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-03-25","date":"2026-03-24","transaction":"WATSONS ALABANG","amount":920.0,"bank":"BPI_Lincoln","category":"Pharmacy"},{"statement_date":"2026-03-25","date":"2026-03-23","transaction":"GRAB FOOD","amount":480.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-03-25","date":"2026-03-22","transaction":"TIKTOK SHOP","amount":1650.0,"bank":"BPI_Lincoln","category":"Online Shopping"},{"statement_date":"2026-03-25","date":"2026-03-21","transaction":"SPOTIFY SUBSCRIPTION","amount":169.0,"bank":"BPI_Lincoln","category":"Subscriptions"},{"statement_date":"2026-03-25","date":"2026-03-20","transaction":"MERCURY DRUG ALABANG","amount":830.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-03-25","date":"2026-03-19","transaction":"GRAB RIDE","amount":290.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-03-25","date":"2026-03-18","transaction":"APPLE ITUNES STORE","amount":349.0,"bank":"BPI_Lincoln","category":"Subscriptions"},{"statement_date":"2026-03-25","date":"2026-03-17","transaction":"SHOPWISE ALABANG","amount":3890.0,"bank":"BPI_Lincoln","category":"Groceries"},{"statement_date":"2026-03-25","date":"2026-03-16","transaction":"LAZADA PHILIPPINES","amount":3200.0,"bank":"BPI_Lincoln","category":"Online Shopping"},{"statement_date":"2026-03-25","date":"2026-03-15","transaction":"GRAB FOOD","amount":390.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-03-01","date":"2026-03-01","transaction":"FINANCE CHARGE","amount":1120.0,"bank":"BDO","category":"Finance Charge"},{"statement_date":"2026-03-01","date":"2026-02-28","transaction":"GREENWICH PIZZA TRINOMA","amount":580.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-03-01","date":"2026-02-27","transaction":"PETRON QUEZON AVE","amount":2950.0,"bank":"BDO","category":"Gas"},{"statement_date":"2026-03-01","date":"2026-02-26","transaction":"GRAB FOOD","amount":460.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-03-01","date":"2026-02-24","transaction":"MCDONALDS DRIVE THRU","amount":380.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-03-01","date":"2026-02-23","transaction":"SMC SKYWAY TOLL","amount":220.0,"bank":"BDO","category":"Toll fee"},{"statement_date":"2026-03-01","date":"2026-02-22","transaction":"MERCURY DRUG COMMONWEALTH","amount":680.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-03-01","date":"2026-02-20","transaction":"GRAB FOOD","amount":420.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-03-01","date":"2026-02-18","transaction":"SMC SKYWAY TOLL","amount":220.0,"bank":"BDO","category":"Toll fee"},{"statement_date":"2026-03-01","date":"2026-02-17","transaction":"GRAB RIDE","amount":200.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-03-01","date":"2026-02-16","transaction":"PETRON COMMONWEALTH","amount":3400.0,"bank":"BDO","category":"Gas"},{"statement_date":"2026-02-25","date":"2026-02-25","transaction":"SHOPWISE ALABANG","amount":4230.0,"bank":"BPI_Lincoln","category":"Groceries"},{"statement_date":"2026-02-25","date":"2026-02-25","transaction":"FINANCE CHARGE","amount":920.0,"bank":"BPI_Lincoln","category":"Finance Charge"},{"statement_date":"2026-02-25","date":"2026-02-24","transaction":"SPOTIFY SUBSCRIPTION","amount":169.0,"bank":"BPI_Lincoln","category":"Subscriptions"},{"statement_date":"2026-02-25","date":"2026-02-24","transaction":"WATSONS ALABANG","amount":750.0,"bank":"BPI_Lincoln","category":"Pharmacy"},{"statement_date":"2026-02-25","date":"2026-02-23","transaction":"TIMEZONE GATEWAY","amount":1450.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-02-25","date":"2026-02-22","transaction":"GRAB FOOD","amount":560.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-02-25","date":"2026-02-21","transaction":"TIKTOK SHOP","amount":2100.0,"bank":"BPI_Lincoln","category":"Online Shopping"},{"statement_date":"2026-02-25","date":"2026-02-20","transaction":"MERCURY DRUG ALABANG","amount":480.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-02-25","date":"2026-02-19","transaction":"GRAB RIDE","amount":340.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-02-25","date":"2026-02-18","transaction":"APPLE ITUNES STORE","amount":349.0,"bank":"BPI_Lincoln","category":"Subscriptions"},{"statement_date":"2026-02-25","date":"2026-02-17","transaction":"LAZADA PHILIPPINES","amount":1890.0,"bank":"BPI_Lincoln","category":"Online Shopping"},{"statement_date":"2026-02-25","date":"2026-02-16","transaction":"WALTER MART ALABANG","amount":3680.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-02-25","date":"2026-02-15","transaction":"GRAB FOOD","amount":420.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-02-01","date":"2026-02-01","transaction":"FINANCE CHARGE","amount":1050.0,"bank":"BDO","category":"Finance Charge"},{"statement_date":"2026-02-01","date":"2026-01-30","transaction":"SM SUPERMARKET NORTH","amount":2100.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-02-01","date":"2026-01-29","transaction":"GRAB FOOD","amount":340.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-02-01","date":"2026-01-28","transaction":"PETRON BALINTAWAK","amount":2800.0,"bank":"BDO","category":"Gas"},{"statement_date":"2026-02-01","date":"2026-01-27","transaction":"JOLLIBEE DRIVE THRU","amount":520.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-02-01","date":"2026-01-25","transaction":"SMC SKYWAY TOLL","amount":220.0,"bank":"BDO","category":"Toll fee"},{"statement_date":"2026-02-01","date":"2026-01-24","transaction":"MERCURY DRUG COMMONWEALTH","amount":450.0,"bank":"BDO","category":"Other"},{"statement_date":"2026-02-01","date":"2026-01-22","transaction":"GRAB FOOD","amount":380.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-02-01","date":"2026-01-20","transaction":"SMC SKYWAY TOLL","amount":220.0,"bank":"BDO","category":"Toll fee"},{"statement_date":"2026-02-01","date":"2026-01-18","transaction":"GRAB RIDE","amount":180.0,"bank":"BDO","category":"Grab"},{"statement_date":"2026-02-01","date":"2026-01-16","transaction":"PETRON COMMONWEALTH","amount":3200.0,"bank":"BDO","category":"Gas"},{"statement_date":"2026-01-25","date":"2026-01-24","transaction":"WALTER MART ALABANG","amount":3120.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-01-25","date":"2026-01-23","transaction":"NATIONAL BOOKSTORE ALABANG","amount":890.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-01-25","date":"2026-01-23","transaction":"WATSONS ALABANG","amount":680.0,"bank":"BPI_Lincoln","category":"Pharmacy"},{"statement_date":"2026-01-25","date":"2026-01-22","transaction":"GRAB FOOD","amount":410.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-01-25","date":"2026-01-21","transaction":"SPOTIFY SUBSCRIPTION","amount":169.0,"bank":"BPI_Lincoln","category":"Subscriptions"},{"statement_date":"2026-01-25","date":"2026-01-21","transaction":"TIKTOK SHOP","amount":1450.0,"bank":"BPI_Lincoln","category":"Online Shopping"},{"statement_date":"2026-01-25","date":"2026-01-20","transaction":"MERCURY DRUG ALABANG","amount":580.0,"bank":"BPI_Lincoln","category":"Other"},{"statement_date":"2026-01-25","date":"2026-01-19","transaction":"GRAB RIDE","amount":240.0,"bank":"BPI_Lincoln","category":"Grab"},{"statement_date":"2026-01-25","date":"2026-01-18","transaction":"APPLE ITUNES STORE","amount":349.0,"bank":"BPI_Lincoln","category":"Subscriptions"},{"statement_date":"2026-01-25","date":"2026-01-17","transaction":"SHOPWISE ALABANG","amount":4350.0,"bank":"BPI_Lincoln","category":"Groceries"},{"statement_date":"2026-01-25","date":"2026-01-16","transaction":"LAZADA PHILIPPINES","amount":2890.0,"bank":"BPI_Lincoln","category":"Online Shopping"},{"statement_date":"2026-01-25","date":"2026-01-15","transaction":"GRAB FOOD","amount":350.0,"bank":"BPI_Lincoln","category":"Grab"}],"stmt_dates":["2026-05-01","2026-04-26","2026-04-01","2026-03-25","2026-03-01","2026-02-25","2026-02-01","2026-01-25"],"all_categories":["Finance Charge","Gas","Grab","Groceries","Online Shopping","Other","Pharmacy","Subscriptions","Toll fee"],"last_updated":"2026-05-24 22:30","spending_summary_all_time":{"categories":{"Finance Charge":{"icon":"💳","color":"#ef4444","total":7200.0,"count":7},"Grab":{"icon":"🚗","color":"#06b6d4","total":8790.0,"count":24},"Online Shopping":{"icon":"🛍️","color":"#f59e0b","total":17310.0,"count":8},"Subscriptions":{"icon":"📱","color":"#8b5cf6","total":2072.0,"count":8},"Pharmacy":{"icon":"💊","color":"#ec4899","total":3650.0,"count":5},"Toll fee":{"icon":"🛣️","color":"#f97316","total":1760.0,"count":8},"Gas":{"icon":"⛽","color":"#eab308","total":24900.0,"count":8},"Groceries":{"icon":"🛒","color":"#10b981","total":16570.0,"count":4},"Other":{"icon":"📦","color":"#475569","total":44327.0,"count":23}},"total":126579.0}};
+
+var selectedCycle = D.latest_cycle;
+var categoryChart = null;
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(n) {
+  return '₱ ' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtCycle(ck) {
+  var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var y = parseInt(ck.slice(0,4),10), m = parseInt(ck.slice(5,7),10);
+  var nm = m === 12 ? 1 : m + 1;
+  var ny = m === 12 ? y + 1 : y;
+  return mn[m-1] + ' 15 – ' + mn[nm-1] + ' 5 \'' + String(ny).slice(-2);
+}
+function bankColor(b) { return (D.bank_colors && D.bank_colors[b]) || '#6b7280'; }
+function fmtShortDate(s) {
+  if (!s) return '—';
+  var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var parts = s.split(' ')[0].split('-');
+  if (parts.length < 3) return s;
+  return mn[parseInt(parts[1],10)-1] + ' ' + parseInt(parts[2],10);
+}
+
+/* ① Header */
+document.getElementById('lastUpdated').textContent = D.last_updated || '';
+
+/* Cycle dropdown */
+(function() {
+  if (!D.all_cycles || !D.all_cycles.length) return;
+  var sel = document.getElementById('cycleDropdown');
+  D.all_cycles.slice().reverse().forEach(function(ck) {
+    var opt = document.createElement('option');
+    opt.value = ck;
+    opt.textContent = fmtCycle(ck);
+    if (ck === selectedCycle) opt.selected = true;
+    sel.appendChild(opt);
+  });
+})();
+
+function switchCycle(ck) {
+  selectedCycle = ck;
+  document.getElementById('cycleDropdown').value = ck;
+  document.getElementById('top3Panel').style.display = '';
+  var cd = D.cycles_data && D.cycles_data[ck];
+  if (!cd) return;
+  renderSummaryCards(cd, ck);
+  renderCategorySection(cd);
+  renderFCCards(cd);
+  renderCycleCompCard(cd);
+  renderTop3(cd);
+}
+
+/* ② Summary Cards */
+function renderSummaryCards(cd, ck) {
+  var wrap = document.getElementById('summaryCards');
+  wrap.innerHTML = '';
+  var sublabel = fmtCycle(ck);
+
+  var tot = document.createElement('div');
+  tot.className = 'card card-total card-shadow';
+  tot.innerHTML =
+    '<div class="card-lbl">Total</div>' +
+    '<div class="card-value">' + fmt(cd.total) + '</div>' +
+    '<div class="card-sub">' + esc(sublabel) + '</div>';
+  wrap.appendChild(tot);
+
+  D.banks.forEach(function(bank) {
+    var parts = D.bank_display[bank] || [bank, ''];
+    var count = (cd.bank_counts && cd.bank_counts[bank]) || 0;
+    var total = (cd.bank_totals && cd.bank_totals[bank]) || 0;
+    var stmtDate = (cd.bank_stmt_dates && cd.bank_stmt_dates[bank]) || '';
+    var c = document.createElement('div');
+    c.className = 'card card-shadow';
+    c.style.background = bankColor(bank);
+    c.innerHTML =
+      '<div class="card-line1">' + esc(parts[0]) + '</div>' +
+      '<div class="card-line2">' + esc(parts[1]) + '</div>' +
+      '<div class="card-value">' + fmt(total) + '</div>' +
+      '<div class="card-sub">' +
+        count.toLocaleString() + ' transaction' + (count !== 1 ? 's' : '') +
+        (stmtDate ? '<span class="card-meta">Statement: ' + esc(stmtDate) + '</span>' : '') +
+        '<span class="card-meta">Last fetched: ' + esc(fmtShortDate(D.last_updated)) + '</span>' +
+      '</div>';
+    wrap.appendChild(c);
+  });
+}
+
+/* ③ Category Donut + List */
+function renderCategorySection(cd) {
+  var entries = Object.entries(cd.categories || {}).sort(function(a,b){ return b[1].total - a[1].total; });
+  var labels  = entries.map(function(e){ return e[0]; });
+  var values  = entries.map(function(e){ return e[1].total; });
+  var colors  = entries.map(function(e){ return e[1].color; });
+
+  if (categoryChart) {
+    categoryChart.data.labels = labels;
+    categoryChart.data.datasets[0].data = values;
+    categoryChart.data.datasets[0].backgroundColor = colors;
+    categoryChart.update();
+  } else if (entries.length) {
+    categoryChart = new Chart(document.getElementById('categoryChart'), {
+      type: 'doughnut',
+      data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0, hoverOffset: 8 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: function(ctx){ return '  ' + ctx.label + ': ' + fmt(ctx.raw); } } }
+        }
+      }
+    });
+  }
+
+  var listEl = document.getElementById('categoryList');
+  if (!entries.length) {
+    listEl.innerHTML = '<p class="no-data-msg">No category data for this cycle.</p>'; return;
+  }
+  listEl.innerHTML = entries.map(function(e) {
+    var name = e[0], info = e[1];
+    return '<div class="cat-item">' +
+      '<span class="cat-dot" style="background:' + info.color + '"></span>' +
+      '<span class="cat-name">' + esc(info.icon + ' ' + name) + '</span>' +
+      '<div class="cat-right">' +
+        '<span class="cat-amount">' + fmt(info.total) + '</span>' +
+        '<span class="cat-txcount">' + info.count + ' txn' + (info.count !== 1 ? 's' : '') + '</span>' +
+      '</div></div>';
+  }).join('');
+}
+
+/* Finance Charge card */
+function renderFCCards(cd) {
+  var fcChEl = document.getElementById('fcChangeCard');
+  var fc     = cd.finance_charge || 0;
+  var comp   = cd.cycle_comp;
+  if (comp && comp.finance_charge_pct !== null && comp.finance_charge_pct !== undefined) {
+    var pct = comp.finance_charge_pct, up = pct >= 0;
+    fcChEl.innerHTML =
+      '<div class="section-title">Finance Charge vs Prev Cycle</div>' +
+      '<div class="fc-arrow">' + fmt(comp.prev_finance_charge) + ' → ' + fmt(fc) + '</div>' +
+      '<span class="month-pct ' + (up ? 'pct-up' : 'pct-down') + '" style="font-size:0.85rem;padding:3px 10px;">' +
+        (up ? '+' : '') + pct + '%' +
+      '</span>';
+  } else if (comp) {
+    fcChEl.innerHTML =
+      '<div class="section-title">Finance Charge vs Prev Cycle</div>' +
+      '<p class="no-data-msg" style="margin-top:8px">No FC in previous cycle.</p>';
+  } else {
+    fcChEl.innerHTML =
+      '<div class="section-title">Finance Charge vs Prev Cycle</div>' +
+      '<p class="no-data-msg" style="margin-top:8px">First cycle on record.</p>';
+  }
+}
+
+/* FC stack — Prev Cycle vs Current Cycle card */
+function renderCycleCompCard(cd) {
+  var el = document.getElementById('cycleCompCard');
+  el.innerHTML = '<div class="section-title">Prev Cycle Total vs Current Cycle Total</div>';
+  if (!cd.cycle_comp) {
+    el.innerHTML += '<p class="no-data-msg" style="margin-top:8px">Not enough data yet.</p>'; return;
+  }
+  var c = cd.cycle_comp, up = c.pct_change >= 0;
+  el.innerHTML +=
+    '<div class="month-block"><div>' +
+      '<div class="month-lbl" style="font-size:0.72rem">' + esc(c.previous.label) + '</div>' +
+      '<div class="month-val" style="font-size:0.9rem">' + fmt(c.previous.total) + '</div>' +
+    '</div></div>' +
+    '<div class="month-block"><div>' +
+      '<div class="month-lbl" style="font-size:0.72rem">' + esc(c.current.label) + '</div>' +
+      '<div class="month-val" style="font-size:0.9rem">' + fmt(c.current.total) + '</div>' +
+    '</div></div>' +
+    '<span class="month-pct ' + (up ? 'pct-up' : 'pct-down') + '" style="font-size:0.82rem;padding:3px 10px;margin-top:8px;">' +
+      (up ? '+' : '') + c.pct_change + '%</span>';
+}
+
+/* ④ Top 3 Merchants */
+function renderTop3(cd) {
+  var el = document.getElementById('top3List');
+  if (!cd.top3 || !cd.top3.length) {
+    el.innerHTML = '<p class="no-data-msg">No uncategorized merchants in this cycle.</p>'; return;
+  }
+  el.innerHTML = cd.top3.map(function(m, i) {
+    var color = bankColor(m.bank);
+    return '<div class="top3-item">' +
+      '<span class="top3-rank">#' + (i+1) + '</span>' +
+      '<span class="top3-name" title="' + esc(m.name) + '">' + esc(m.name) + '</span>' +
+      '<span class="top3-amount">' + fmt(m.total) + '</span>' +
+      '<span class="badge" style="background:' + color + '">' + esc(m.bank.replace(/_/g,' ')) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+/* Initialize with latest cycle */
+if (D.latest_cycle && D.cycles_data && D.cycles_data[D.latest_cycle]) {
+  switchCycle(D.latest_cycle);
+}
+
+/* ⑤ Bar Chart — always shows all cycles, never changes with cycle selector */
+(function() {
+  var cycles = D.all_cycles;
+  var canvas = document.getElementById('spendChart');
+  if (!cycles || !cycles.length) {
+    canvas.parentElement.innerHTML = '<p class="no-data-msg" style="padding:24px 0">No transaction data yet.</p>';
+    return;
+  }
+  canvas.style.minWidth = Math.max(480, cycles.length * 140) + 'px';
+  var cycleSum = cycles.reduce(function(s,ck){ return s + (D.cycles_data[ck] ? D.cycles_data[ck].total : 0); }, 0);
+  document.getElementById('cycleAvg').textContent = 'Avg per cycle: ' + fmt(cycleSum / cycles.length);
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: cycles.map(fmtCycle),
+      datasets: D.banks.map(function(bank) {
+        return {
+          label: bank.replace(/_/g,' '),
+          data:  cycles.map(function(c){ return (D.cycle_spend[bank] && D.cycle_spend[bank][c]) || 0; }),
+          backgroundColor: bankColor(bank),
+          borderRadius: 3, borderSkipped: false,
+        };
+      })
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position:'bottom', labels:{color:'#94a3b8', font:{family:'Inter',size:12}, padding:20} },
+        tooltip: { callbacks: {
+          label:  function(ctx){ return '  ' + ctx.dataset.label + ': ' + fmt(ctx.raw); },
+          footer: function(items){ var t=items.reduce(function(s,i){return s+i.raw;},0); return 'Total: '+fmt(t); }
+        }}
+      },
+      scales: {
+        x: { stacked:true, ticks:{color:'#94a3b8',font:{family:'Inter',size:11}}, grid:{color:'rgba(51,65,85,0.4)'} },
+        y: { stacked:true,
+          ticks:{ color:'#94a3b8', font:{family:'Inter',size:11},
+            callback: function(v){ return '₱' + v.toLocaleString('en-PH'); }
+          },
+          grid:{color:'rgba(51,65,85,0.4)'}
+        }
+      }
+    }
+  });
+})();
+
+/* ⑥ Spending Summary */
+(function() {
+  var sel = document.getElementById('summaryYearDropdown');
+  var optAll = document.createElement('option');
+  optAll.value = 'all'; optAll.textContent = 'Total All Time';
+  sel.appendChild(optAll);
+  (D.all_years || []).slice().reverse().forEach(function(yr) {
+    var opt = document.createElement('option');
+    opt.value = yr; opt.textContent = yr;
+    sel.appendChild(opt);
+  });
+  var initial = D.latest_year || 'all';
+  sel.value = initial;
+  renderSpendingSummary(initial);
+})();
+
+function renderSpendingSummary(mode) {
+  var cats, prevCats = null;
+  if (mode === 'all') {
+    var st = D.spending_summary_all_time || {};
+    cats = st.categories || {};
+  } else {
+    var yd = D.years_data && D.years_data[mode];
+    cats = yd ? (yd.categories || {}) : {};
+    var idx = (D.all_years || []).indexOf(mode);
+    if (idx > 0) {
+      var prevYr = D.all_years[idx - 1];
+      var pyd = D.years_data && D.years_data[prevYr];
+      prevCats = pyd ? (pyd.categories || {}) : null;
+    }
+  }
+  var entries = Object.entries(cats).sort(function(a,b){ return b[1].total - a[1].total; });
+  var grandTotal = entries.reduce(function(s,e){ return s + e[1].total; }, 0);
+  var rows = entries.map(function(e) {
+    var cat = e[0], info = e[1];
+    var pctCell = '<td style="text-align:right;color:var(--muted)">—</td>';
+    if (prevCats && prevCats[cat] && prevCats[cat].total > 0) {
+      var pct = (info.total - prevCats[cat].total) / prevCats[cat].total * 100;
+      var up = pct >= 0;
+      pctCell = '<td style="text-align:right"><span class="month-pct ' + (up ? 'pct-up' : 'pct-down') +
+        '" style="font-size:0.75rem;padding:2px 9px;margin-top:0">' +
+        (up ? '+' : '') + pct.toFixed(1) + '%</span></td>';
+    }
+    return '<tr>' +
+      '<td style="display:flex;align-items:center;gap:8px;min-height:36px">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:' + info.color +
+          ';flex-shrink:0;display:inline-block"></span>' +
+        esc(info.icon + ' ' + cat) +
+      '</td>' +
+      '<td class="td-amount">' + fmt(info.total) + '</td>' +
+      pctCell +
+    '</tr>';
+  });
+  rows.push('<tr style="font-weight:700;border-top:2px solid var(--border)">' +
+    '<td style="color:var(--muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;padding-top:11px">Total</td>' +
+    '<td class="td-amount" style="padding-top:11px">' + fmt(grandTotal) + '</td>' +
+    '<td></td></tr>');
+  document.getElementById('summaryTableBody').innerHTML = rows.join('');
+}
+
+/* ⑦ Transaction Table — always shows all transactions, unchanged */
+var filteredTx  = [];
+var currentPage = 1;
+var PAGE_SIZE   = 20;
+
+(function initTable() {
+  var bSel = document.getElementById('filterBank');
+  D.banks.forEach(function(b) {
+    var o = document.createElement('option');
+    o.value = b; o.textContent = b.replace(/_/g,' ');
+    bSel.appendChild(o);
+  });
+
+  var sSel = document.getElementById('filterStmt');
+  (D.stmt_dates || []).forEach(function(d) {
+    var o = document.createElement('option');
+    o.value = o.textContent = d;
+    sSel.appendChild(o);
+  });
+
+  var cSel = document.getElementById('filterCategory');
+  (D.all_categories || []).forEach(function(cat) {
+    var o = document.createElement('option');
+    o.value = o.textContent = cat;
+    cSel.appendChild(o);
+  });
+
+  filteredTx = (D.all_tx || []).slice();
+  renderTable();
+})();
+
+function applyFilters() {
+  var bank  = document.getElementById('filterBank').value;
+  var stmt  = document.getElementById('filterStmt').value;
+  var cat   = document.getElementById('filterCategory').value;
+  var query = document.getElementById('filterSearch').value.toLowerCase();
+  filteredTx = (D.all_tx || []).filter(function(tx) {
+    return (!bank  || tx.bank === bank) &&
+           (!stmt  || tx.statement_date === stmt) &&
+           (!cat   || tx.category === cat) &&
+           (!query || tx.transaction.toLowerCase().indexOf(query) !== -1);
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+function renderTable() {
+  var start = (currentPage - 1) * PAGE_SIZE;
+  var page  = filteredTx.slice(start, start + PAGE_SIZE);
+  document.getElementById('txBody').innerHTML = page.map(function(tx) {
+    var neg = tx.amount < 0, color = bankColor(tx.bank);
+    return '<tr>' +
+      '<td>' + esc(tx.statement_date || '—') + '</td>' +
+      '<td>' + esc(tx.date) + '</td>' +
+      '<td>' + esc(tx.transaction) + '</td>' +
+      '<td class="td-amount ' + (neg ? 'amt-neg' : 'amt-pos') + '">' + fmt(tx.amount) + '</td>' +
+      '<td><span class="badge" style="background:' + color + '">' + esc(tx.bank.replace(/_/g,' ')) + '</span></td>' +
+    '</tr>';
+  }).join('');
+  renderPagination();
+}
+
+function renderPagination() {
+  var total = filteredTx.length;
+  var start = total ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  var end   = Math.min(currentPage * PAGE_SIZE, total);
+  document.getElementById('pageInfo').textContent =
+    total === 0 ? 'No transactions found' : 'Showing ' + start + '–' + end + ' of ' + total;
+  document.getElementById('btnPrev').disabled = currentPage <= 1;
+  document.getElementById('btnNext').disabled = end >= total;
+}
+
+function prevPage() { if (currentPage > 1) { currentPage--; renderTable(); } }
+function nextPage() { if (currentPage * PAGE_SIZE < filteredTx.length) { currentPage++; renderTable(); } }
+</script>
+</body>
+</html>

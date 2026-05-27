@@ -1,0 +1,14 @@
+.env
+config.yaml
+statements/
+statements_unlocked/
+parsed/
+__pycache__/
+*.pyc
+venv/
+data/downloaded_uids.json
+data/cc_transactions.xlsx
+logs/*.txt
+.claude/
+/.gitkeep
+CLAUDE.md
